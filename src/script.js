@@ -5,13 +5,19 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "lil-gui";
 
-function loadModels() {
+  function loadModels() {
+  return new Promise( async (resolve) => {
+    const loader = new GLTFLoader();
+    const loadedD = await loader.loadAsync("sship.gltf");
+    resolve(loadedD)
+  });
+}
+
+function loadWorld(){
   return new Promise((resolve) => {
     const loader = new GLTFLoader();
-    loader.load("spaceship.glb", (loadedD) => {
       loader.load("world.glb", (worldD) => {
-        resolve([loadedD, worldD]);
-      });
+        resolve(worldD);
     });
   });
 }
@@ -20,9 +26,11 @@ async function main() {
   THREE.ColorManagement.enabled = false;
   // Debug
   const gui = new dat.GUI();
-  const [loadedData, worldData] = await loadModels();
-  const spaceship = loadedData.scene.children.filter((n, i) => i < 4);
-  const alien = loadedData.scene.children.filter((n, i) => i >= 4);
+  const loadedData = await loadModels();
+  const worldData = await loadWorld();
+  const spaceship = new THREE.Group();
+  loadedData.scene.children.forEach(n => spaceship.add(n))
+  const alien = [loadedData.scene.children[0]];
   const world = worldData.scene.children[0];
 
   const canvas = document.querySelector("canvas.webgl");
@@ -35,56 +43,24 @@ async function main() {
   // moderatet
   const directionalLight = new THREE.DirectionalLight(0x00ff00, 0.5);
   scene.add(directionalLight);
-  gui.add(directionalLight, "intensity").min(0).max(1).step(0.01);
+  // gui.add(directionalLight, "intensity").min(0).max(1).step(0.01);
   // cheap
   const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
   hemisphereLight.position.set(0, 300, 0);
   scene.add(hemisphereLight);
-  gui.add(hemisphereLight, "intensity", 0, 1, 0.01);
+  // gui.add(hemisphereLight, "intensity", 0, 1, 0.01);
   // moderatet
   const pointLight = new THREE.PointLight(0xff9000, 1, 0);
   pointLight.position.set(1, 0, 4);
   scene.add(pointLight);
-  gui.add(pointLight, "intensity", 0, 1, 0.01);
-  gui.add(pointLight, "distance", 0, 1, 0.01);
+  // gui.add(pointLight, "intensity", 0, 1, 0.01);
+  // gui.add(pointLight, "distance", 0, 1, 0.01);
 
-  /**
-   * Objects
-   */
-  // Material
-
-  // Objects
-
-  // const torus = new THREE.Mesh(
-  //   new THREE.TorusGeometry(0.3, 0.2, 32, 64),
-  //   material
-  // );
-  // torus.rotation.x = -0.5 * Math.PI;
-  // torus.position.x = 0;
-
-  // const plane = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), material);
-  // plane.rotation.x = -Math.PI * 0.5;
-  // plane.position.y = -0.65;
-
-  // scene.add(plane);
-
-  spaceship.forEach((n) => {
-    n.material.metalness = 0;
-    n.scale.x = 0.5
-    n.scale.y = 0.5
-    n.scale.z = 0.5
-    n.position.z += 5;
-    scene.add(n);
-  });
-  alien.forEach((n) => {
-    n.scale.x = 0.5
-    n.scale.y = 0.5
-    n.scale.z = 0.5
-    n.position.z += 5;
-    n.position.y -= 0.1
-    scene.add(n);
-  });
-
+    spaceship.scale.x = 0.5
+    spaceship.scale.y = 0.5
+    spaceship.scale.z = 0.5
+    spaceship.position.z += 5;
+    scene.add(spaceship);
   world.scale.x = 6;
   world.scale.y = 6;
   world.scale.z = 6;
@@ -170,7 +146,7 @@ async function main() {
   }
 
   function hover(elapsedTime) {
-    spaceship.concat(...alien).forEach((n) => {
+    [spaceship].concat(...alien).forEach((n) => {
       const currentPosition = n.position.y;
       n.position.y = currentPosition + Math.cos(elapsedTime) * 0.005;
     });
@@ -215,12 +191,12 @@ async function main() {
   const jump = async () => {
     hovering = false;
     const JUMP_HEIGHT = 2;
-    spaceship.forEach((n) => {
-      const from = { y: n.position.y };
-      const to = { y: n.position.y + JUMP_HEIGHT };
-      updateTween(from, to, 600, n);
-      updateRotationTween({ z: 0 }, { z: 0.75 }, 400, n);
-    });
+    // spaceship.forEach((n) => {
+      const from = { y: spaceship.position.y };
+      const to = { y: spaceship.position.y + JUMP_HEIGHT };
+      updateTween(from, to, 600, spaceship);
+      updateRotationTween({ z: 0 }, { z: 0.75 }, 400, spaceship);
+    // });
     alien.forEach((n) => {
       const from = { y: n.position.y };
       const to = { y: n.position.y + JUMP_HEIGHT };
@@ -228,11 +204,10 @@ async function main() {
     });
 
     setTimeout(() => {
-      spaceship.forEach((n, i) => {
-        const updatedFrom = { y: n.position.y };
-        const to = { y: n.position.y - JUMP_HEIGHT };
-        updateTween(updatedFrom, to, 500, n);
-      });
+      const updatedFrom = { y: spaceship.position.y };
+      const to = { y: spaceship.position.y - JUMP_HEIGHT };
+      updateTween(updatedFrom, to, 500, spaceship);
+
       alien.forEach((n) => {
         const updatedFrom = { y: n.position.y };
         const to = { y: n.position.y - JUMP_HEIGHT };
@@ -241,14 +216,10 @@ async function main() {
     }, 600);
 
     setTimeout(() => {
-      spaceship.forEach((n) => {
-        updateRotationTween({ z: 0.75 }, { z: -0.5 }, 400, n);
-      });
+        updateRotationTween({ z: 0.75 }, { z: -0.5 }, 400, spaceship);
     }, 400);
     setTimeout(() => {
-      spaceship.forEach((n) => {
-        updateRotationTween({ z: -0.5 }, { z: 0 }, 400, n);
-      });
+        updateRotationTween({ z: -0.5 }, { z: 0 }, 400, spaceship);
     }, 800);
 
     setTimeout(() => {
@@ -257,14 +228,12 @@ async function main() {
   };
 
   const spin = () => {
-    spaceship.forEach((n) => {
       updateRotationTween(
-        { y: n.rotation.y },
-        { y: n.rotation.y + Math.PI },
+        { y: spaceship.rotation.y },
+        { y: spaceship.rotation.y + Math.PI },
         400,
-        n
+        spaceship
       );
-    });
     alien.forEach((n) => {
       if (n.name === "Cone") {
         const JUMP_HEIGHT = 1;
@@ -282,14 +251,12 @@ async function main() {
   };
 
   const loop = () => {
-    spaceship.forEach(n => {
       updateRotationTween(
-        { x: n.rotation.x },
-        { x: n.rotation.x + Math.PI * 2 },
+        { x: spaceship.rotation.x },
+        { x: spaceship.rotation.x + Math.PI * 2 },
         600,
-        n
+        spaceship
       );
-    })
     alien.forEach(n => {
       updateRotationTween(
         { x: n.rotation.x },
@@ -316,32 +283,24 @@ async function main() {
       return;
     }
     
-    spaceship.forEach((n) => {
-      const targetPosition = { x: n.position.x };
+
+      const targetPosition = { x: spaceship.position.x };
       if (keyCode === 37) {
-        targetPosition.x = n.position.x - 1.5;
-        spaceship.forEach((n) => {
-          updateRotationTween({ z: 0 }, { z: -0.5 }, 400, n);
-        });
+        targetPosition.x = spaceship.position.x - 1.5;
+          updateRotationTween({ z: 0 }, { z: -0.5 }, 400, spaceship);
         setTimeout(() => {
-          spaceship.forEach((n) => {
-            updateRotationTween({ z: -0.5 }, { z: 0 }, 400, n);
-          });
+            updateRotationTween({ z: -0.5 }, { z: 0 }, 400, spaceship);
         }, 400);
       }
       if (keyCode === 39) {
-        targetPosition.x = n.position.x + 1.5;
-        spaceship.forEach((n) => {
-          updateRotationTween({ z: 0 }, { z: 0.5 }, 400, n);
-        });
+        targetPosition.x = spaceship.position.x + 1.5;
+          updateRotationTween({ z: 0 }, { z: 0.5 }, 400, spaceship);
         setTimeout(() => {
-          spaceship.forEach((n) => {
-            updateRotationTween({ z: 0.5 }, { z: 0 }, 400, n);
-          });
+            updateRotationTween({ z: 0.5 }, { z: 0 }, 400, spaceship);
         }, 400);
       }
-      updateTween(n.position, targetPosition, time, n);
-    });
+      updateTween(spaceship.position, targetPosition, time, spaceship);
+
     alien.forEach((n) => {
       const targetPosition = { x: n.position.x };
       if (keyCode === 37) {
