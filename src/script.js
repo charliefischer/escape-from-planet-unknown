@@ -8,8 +8,15 @@ import * as dat from "lil-gui";
   function loadModels() {
   return new Promise( async (resolve) => {
     const loader = new GLTFLoader();
-    const loadedD = await loader.loadAsync("sship.gltf");
-    resolve(loadedD)
+    // const loadedD = await loader.load("spaceship.glb");
+    // const loader = new GLTFLoader();
+    loader.load("spaceship.glb", (loadedD) => {
+      console.log(loadedD)
+        resolve(loadedD);
+    }, undefined, (error) => {
+      console.error("Error loading spaceship.glb:", error);
+  });
+    // resolve(loadedD)
   });
 }
 
